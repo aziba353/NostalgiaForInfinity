@@ -19,6 +19,8 @@ from technical.util import resample_to_interval, resampled_merge
 from technical.indicators import zema, VIDYA, ichimoku
 import time
 
+logger = logging.getLogger(__name__)
+
 log = logging.getLogger(__name__)
 #log.setLevel(logging.DEBUG)
 
@@ -112,7 +114,7 @@ class NostalgiaForInfinityNext(IStrategy):
         "0": 10,
     }
 
-    stoploss = -0.50
+    stoploss = -0.150
 
     # Trailing stoploss (not used)
     trailing_stop = False
@@ -120,7 +122,7 @@ class NostalgiaForInfinityNext(IStrategy):
     trailing_stop_positive = 0.01
     trailing_stop_positive_offset = 0.03
 
-    use_custom_stoploss = False
+    use_custom_stoploss = True
 
     # Optimal timeframe for the strategy.
     timeframe = '5m'
@@ -4400,6 +4402,8 @@ class NostalgiaForInfinityNext(IStrategy):
         informative_1h['sell_pump_24_2'] = (informative_1h['hl_pct_change_24'] > self.sell_pump_threshold_24_2)
         informative_1h['sell_pump_24_3'] = (informative_1h['hl_pct_change_24'] > self.sell_pump_threshold_24_3)
 
+        informative_1h['ahmad_atr'] = ta.ATR(dataframe, timeperiod=10)
+
         tok = time.perf_counter()
         log.debug(f"[{metadata['pair']}] informative_1h_indicators took: {tok - tik:0.4f} seconds.")
 
@@ -5503,6 +5507,196 @@ class NostalgiaForInfinityNext(IStrategy):
             hold_trade = True
 
         return hold_trade
+
+    trades_info = {}
+
+    def trades_info_update(self, f0, duration, pf0, wr0, crrr0, pair=None):
+        if "total" not in self.trades_info.keys():
+            self.trades_info["total"] = {}
+            self.trades_info["total"]["win"] = 0
+            self.trades_info["total"]["ccw"] = 0
+            self.trades_info["total"]["ccl"] = 0
+            self.trades_info["total"]["cwr"] = wr0
+            self.trades_info["total"]["crrr"] = crrr0
+            self.trades_info["total"]["cpf"] = pf0
+            self.trades_info["total"]["draw"] = 0
+            self.trades_info["total"]["profitsum"] = 0
+            self.trades_info["total"]["losssum"] = 0
+            self.trades_info["total"]["loss"] = 0
+            self.trades_info["total"]["loss_abs"] = 0
+            self.trades_info["total"]["draw"] = 0
+            self.trades_info["total"]["f"] = f0
+            self.trades_info["total"]["is_draw"] = False
+
+        if self.config['runmode'].value in ('live', 'dry_run'):
+            trades = Trade.get_trades([Trade.is_open.is_(False)]).order_by(Trade.close_date).limit(duration).all()
+            self.trades_info["total"]["win"] = 0
+            self.trades_info["total"]["loss"] = 0
+            self.trades_info["total"]["ccw"] = 0
+            self.trades_info["total"]["ccl"] = 0
+            self.trades_info["total"]["losssum"] = 0
+            self.trades_info["total"]["profitsum"] = 0
+            for trade in trades:
+                if trade.close_profit > 0:
+                    self.trades_info["total"]["win"] += 1
+                    self.trades_info["total"]["ccw"] += 1
+                    self.trades_info["total"]["ccl"] = 0
+                    self.trades_info["total"]["profitsum"] += trade.close_profit_abs
+                    self.trades_info["total"]["is_draw"] = False
+                elif trade.close_profit < 0:
+                    self.trades_info["total"]["loss"] += 1
+                    self.trades_info["total"]["ccl"] += 1
+                    self.trades_info["total"]["ccw"] = 0
+                    self.trades_info["total"]["losssum"] += trade.close_profit_abs
+                    self.trades_info["total"]["is_draw"] = False
+                else:
+                    self.trades_info["total"]["draw"] += 1
+                    self.trades_info["total"]["is_draw"] = True
+
+            self.trades_info["total"]["cwr"] = (self.trades_info["total"]["win"] /
+                                                (self.trades_info["total"]["win"] + self.trades_info["total"]["loss"])) \
+                if (self.trades_info["total"]["win"] + self.trades_info["total"]["loss"]) != 0 else wr0
+
+            self.trades_info["total"]["cpf"] = abs(self.trades_info["total"]["profitsum"] /
+                                                   self.trades_info["total"]["losssum"]) \
+                if self.trades_info["total"]["losssum"] != 0 else pf0
+
+            self.trades_info["total"]["crrr"] = self.trades_info["total"]["cpf"] * (
+                    1 - self.trades_info["total"]["cwr"]) / self.trades_info["total"]["cwr"] \
+                if self.trades_info["total"]["cwr"] != 0 else 0
+
+    def theta_calc(self, m_bs, m_pf, theta0, cpf):
+        if self.wallets:
+            # free_usdt = self.wallets.get_free('USDT')
+            # used_usdt = self.wallets.get_used('USDT')
+            # total_usdt = self.wallets.get_total('USDT')
+            # cbs=((total_usdt/firstBalance)-1)*100       #current balance status percent
+            cbs = Trade.get_total_closed_profit()
+            # total_usdt = self.wallets.get_total_stake_amount()
+
+            theta = (m_bs * math.tanh(cbs / 10) + 1) * (m_pf * math.tanh(cpf - 1.5) + 1) + theta0
+            return theta
+        else:
+            return theta0
+
+    def mm_upward(self, f_now, N, theta, i, alpha):
+        f = f_now + alpha * (1 / N) * theta
+        return f
+
+    def mm_after_profit_lock(self, f0, N, theta, i, k, alpha):
+        if theta >= f0:
+            f = (f0 + k * (theta - f0)) + alpha * (i - N - 1) / N * theta
+        else:
+            f = theta
+        return f
+
+    def mm_minor_loss(self, f0, f_now, N, theta, i, k, alpha):
+        if f_now == f0:
+            f = f0
+        elif f_now > f0:
+            # f = (f0 + k * (f_now - f0)) - alpha * ((i - 1) / N) * theta
+            f = f_now - alpha * (1 / N) * theta
+        else:
+            f = f_now
+        return f
+
+    def mm_major_loss(self, f0, f_now, N, theta, i, k, pcl, theta0, alpha):
+        if f_now >= f0:
+            f = (f0 + k * (f_now - f0)) - alpha * (1 / N) * theta
+        else:
+            f = f_now - alpha * (1 / N) * theta
+        return f
+
+    def custom_stake_amount(self, pair: str, current_time: datetime, current_rate: float,
+                            proposed_stake: float, min_stake: float, max_stake: float,
+                            **kwargs) -> float:
+        try:
+            # Main Parameters
+            f0 = 0.25
+            N = 5  # After this amount of ccw, enter profit lock
+            k_apl = 0.6  # gain for initial f after profit lock  0 < k < 1
+            k_minor = 0.9
+            k_major = 0.5
+            pcl = 1  # parameter of consecutive loss: distinction between MajorLoss or MinorLoss
+            pcw = 1  # parameter of consecutive win: distinction between Major-win or Minor-win
+            duration = 20
+            alpha = 1  # Coefficient of Slope Theta/N
+            # Parameters of Theta function (Max Risk)
+            theta0 = 0.1
+            m_bs = 1
+            m_pf = 0.5
+
+            # Strategy Parameter
+            wr0 = 0.8
+            crrr0 = 1.2
+            pf0 = crrr0 * (wr0 / (1 - wr0)) if wr0 != 1 else 10
+
+            self.trades_info_update(f0=f0, duration=duration, pf0=pf0, wr0=wr0, crrr0=crrr0)
+            theta = self.theta_calc(m_bs, m_pf, theta0, cpf=self.trades_info["total"]["cpf"])
+            logger.info(self.trades_info)
+
+            if self.trades_info["total"]["is_draw"]:
+                f = self.trades_info["total"]["f"]
+                self.trades_info["total"]["is_draw"] = False
+
+            elif 0 < self.trades_info["total"]["ccw"] <= pcw:
+                f = self.trades_info["total"]["f"]
+                logger.info(f"Risk per trade in pcw and is: {f}")
+
+            elif ((pcw < self.trades_info["total"]["ccw"] <= N) or
+                  (self.trades_info["total"]["ccw"] >= N and self.trades_info["total"]["f"] <= theta)):
+                f = self.mm_upward(self.trades_info["total"]["f"], N, theta, self.trades_info["total"]["ccw"], alpha)
+                logger.info(f"Risk per trade in upward is: {f}")
+
+            elif (self.trades_info["total"]["ccw"] > N) and (self.trades_info["total"]["f"] >= theta):
+                f = self.mm_after_profit_lock(f0, N, theta, self.trades_info["total"]["ccw"], k_apl, alpha)
+                logger.info(f"Risk per trade in after profit lock is: {f}")
+
+            elif 0 < self.trades_info["total"]["ccl"] <= pcl:
+                f = self.mm_minor_loss(f0, self.trades_info["total"]["f"], N, theta,
+                                       self.trades_info["total"]["ccl"], k_minor, alpha)
+                logger.info(f"Risk per trade in minor loss is: {f}")
+
+            elif pcl < self.trades_info["total"]["ccl"]:
+                f = self.mm_major_loss(f0, self.trades_info["total"]["f"], N, theta,
+                                       self.trades_info["total"]["ccl"], k_major, pcl, theta0, alpha)
+                logger.info(f"Risk per trade in major loss is: {f}")
+
+            else:
+                f = f0
+                logger.info(f"Risk per trade is only: {f}")
+
+            if f >= theta:
+                f = theta
+            if f <= theta0:
+                f = theta0
+            self.trades_info["total"]["f"] = f
+
+            stoploss = (self.custom_signal[pair]["stop"] / self.custom_signal[pair]["entry"] - 1) - 0.0015
+            allowed_capital_at_risk = self.wallets.get_total_stake_amount() * f / 100
+            cal_stake = abs(allowed_capital_at_risk / stoploss)
+
+            if cal_stake <= min_stake:
+                cal_stake = min_stake
+            if cal_stake >= self.wallets.get_total_stake_amount() / 5:
+                cal_stake = self.wallets.get_total_stake_amount() / 5
+            if self.custom_signal[pair]["stake"] != 0:
+                cal_stake = self.custom_signal[pair]["stake"]
+
+        except Exception as e:
+            logger.warning("There is an Error in Custom Stake amount function.")
+            logger.warning(e)
+            cal_stake = proposed_stake
+        return cal_stake
+
+    def custom_stoploss(self, pair: str, trade: 'Trade', current_time: datetime,
+                        current_rate: float, current_profit: float, **kwargs) -> float:
+        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
+        candle = dataframe.iloc[-1].squeeze()
+        s = stoploss_from_absolute(current_rate - (candle['ahmad_atr_1h'] * 3), current_rate)
+        if s < 0.05:
+            s = 0.05
+        return s
 
 # Elliot Wave Oscillator
 def ewo(dataframe, sma1_length=5, sma2_length=35):

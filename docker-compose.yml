@@ -29,3 +29,47 @@ services:
       --config user_data/data/${EXCHANGE:-binance}-usdt-static.json
       --max-open-trades ${MAX_OPEN_TRADES:-5}
       --stake-amount ${STAKE_AMOUNT:-unlimited}
+
+  freqtrade_nostal:
+    build:
+      context: .
+      dockerfile: "./docker/Dockerfile.custom"
+    container_name: freqtrade_nostal
+    volumes:
+      - "./user_data:/freqtrade/user_data"
+      - "./NostalgiaForInfinityNext.py:/freqtrade/NostalgiaForInfinityNext.py"
+      # Expose api on port 8080 (localhost only)
+      # Please read the https://www.freqtrade.io/en/latest/rest-api/ documentation
+      # before enabling this.
+      # ports:
+      #   - "127.0.0.1:8080:8080"
+      # Default command used when running `docker compose up`
+    command: >
+      trade
+      --logfile /freqtrade/user_data/logs/freqtrade.log
+      --db-url sqlite:////freqtrade/user_data/nostal_tradesv3.sqlite
+      --strategy NostalgiaForInfinityNext
+      --config user_data/data/NostalgiaForInfinityData/pairlists.json
+      --config user_data/data/NostalgiaForInfinityData/${EXCHANGE:-binance}-usdt-static.json
+      --dry-run
+
+ nostal_kucoin:
+    build:
+      context: .
+      dockerfile: "./docker/Dockerfile.custom"
+    container_name: nostal_kucoin
+    volumes:
+      - "./user_data:/freqtrade/user_data"
+      - "./NostalgiaForInfinityNext.py:/freqtrade/NostalgiaForInfinityNext.py"
+      # Expose api on port 8080 (localhost only)
+      # Please read the https://www.freqtrade.io/en/latest/rest-api/ documentation
+      # before enabling this.
+      # ports:
+      #   - "127.0.0.1:8080:8080"
+      # Default command used when running `docker compose up`
+    command: >
+      trade
+      --logfile /freqtrade/user_data/logs/freqtrade_kucoin.log
+      --db-url sqlite:////freqtrade/user_data/nostal_kucoin_tradesv3.sqlite
+      --strategy NostalgiaForInfinityNext
+      --config user_data/data/ahmad.json
