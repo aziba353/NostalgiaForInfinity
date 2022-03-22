@@ -35,7 +35,7 @@
     "name": "kucoin",
     "key": "617fb2ddcc8d5b0001a3aa08",
     "secret": "0df6304e-0346-4340-80a0-fdf5c0326c93",
-    "password": 1234567,
+    "password": "1234567",
     "pair_whitelist":[
     ]
   },
