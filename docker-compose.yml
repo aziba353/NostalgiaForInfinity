@@ -3,8 +3,8 @@ version: '3'
 services:
   tests:
     build:
-       context: .
-       dockerfile: "./docker/Dockerfile.custom"
+      context: .
+      dockerfile: "./docker/Dockerfile.custom"
     container_name: freqtrade-backtesting
     volumes:
       - "./:/testing"
@@ -14,8 +14,8 @@ services:
     working_dir: /testing
   backtesting:
     build:
-       context: .
-       dockerfile: "./docker/Dockerfile.custom"
+      context: .
+      dockerfile: "./docker/Dockerfile.custom"
     container_name: freqtrade-backtesting
     volumes:
       - "./user_data:/freqtrade/user_data"
@@ -51,7 +51,7 @@ services:
       --config user_data/data/NostalgiaForInfinityData/pairlists.json
       --config user_data/data/NostalgiaForInfinityData/${EXCHANGE:-binance}-usdt-static.json
       --dry-run
- nostal_kucoin:
+  nostal_kucoin:
     build:
       context: .
       dockerfile: "./docker/Dockerfile.custom"
