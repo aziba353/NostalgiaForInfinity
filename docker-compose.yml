@@ -52,9 +52,10 @@ services:
       --config user_data/data/NostalgiaForInfinityData/${EXCHANGE:-binance}-usdt-static.json
       --dry-run
   nostal_kucoin:
-    build:
-      context: .
-      dockerfile: "./docker/Dockerfile.custom"
+    image: freqtradeorg/freqtrade:stable_plot
+    #build:
+    #  context: .
+    #  dockerfile: "./docker/Dockerfile.custom"
     restart: unless-stopped
     container_name: nostal_kucoin
     volumes:
@@ -74,3 +75,29 @@ services:
       --config user_data/ahmad.json
       --config configs/pairlist-volume-kucoin-usdt.json
       --config configs/blacklist-kucoin.json
+
+  freqtrade:
+      image: freqtradeorg/freqtrade:stable_plot
+      # image: freqtradeorg/freqtrade:develop
+      # Use plotting image
+      # image: freqtradeorg/freqtrade:develop_plot
+      # Build step - only needed when additional dependencies are needed
+      # build:
+      #   context: .
+      #   dockerfile: "./docker/Dockerfile.custom"
+      restart: unless-stopped
+      container_name: freqtrade
+      volumes:
+        - "./user_data:/freqtrade/user_data"
+      # Expose api on port 8080 (localhost only)
+      # Please read the https://www.freqtrade.io/en/latest/rest-api/ documentation
+      # before enabling this.
+      # ports:
+      #   - "127.0.0.1:8080:8080"
+      # Default command used when running `docker compose up`
+      command: >
+        trade
+        --logfile /freqtrade/user_data/logs/freqtrade.log
+        --db-url sqlite:////freqtrade/user_data/ahmad_tradesv3.sqlite
+        --config /freqtrade/user_data/config_ahmad_09.json
+        --strategy Ahmad_BB_RPB_TSL_BI_01
