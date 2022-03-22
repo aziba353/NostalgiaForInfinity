@@ -72,4 +72,4 @@ services:
       --logfile /freqtrade/user_data/logs/freqtrade_kucoin.log
       --db-url sqlite:////freqtrade/user_data/nostal_kucoin_tradesv3.sqlite
       --strategy NostalgiaForInfinityNext
-      --config user_data/data/ahmad.json
+      --config user_data/ahmad.json
