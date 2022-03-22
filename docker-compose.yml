@@ -29,7 +29,6 @@ services:
       --config user_data/data/${EXCHANGE:-binance}-usdt-static.json
       --max-open-trades ${MAX_OPEN_TRADES:-5}
       --stake-amount ${STAKE_AMOUNT:-unlimited}
-
   freqtrade_nostal:
     build:
       context: .
@@ -52,7 +51,6 @@ services:
       --config user_data/data/NostalgiaForInfinityData/pairlists.json
       --config user_data/data/NostalgiaForInfinityData/${EXCHANGE:-binance}-usdt-static.json
       --dry-run
-
  nostal_kucoin:
     build:
       context: .
