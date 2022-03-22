@@ -65,11 +65,12 @@ services:
       # Expose api on port 8080 (localhost only)
       # Please read the https://www.freqtrade.io/en/latest/rest-api/ documentation
       # before enabling this.
-      # ports:
-      #   - "127.0.0.1:8080:8080"
+    ports:
+     - "127.0.0.1:8080:8080"
       # Default command used when running `docker compose up`
     command: >
       trade
+      --logfile /freqtrade/user_data/logs/freqtrade.log
       --db-url sqlite:////freqtrade/user_data/nostal_kucoin_tradesv3.sqlite
       --strategy NostalgiaForInfinityNext
       --config user_data/ahmad.json
