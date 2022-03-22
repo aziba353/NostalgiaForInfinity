@@ -30,10 +30,11 @@
     "order_book_min": 1,
     "order_book_max": 1
   },
+  "fee": 0.0008,
   "exchange": {
     "name": "kucoin",
-    "key": "",
-    "secret": "",
+    "key": "617fb2ddcc8d5b0001a3aa08",
+    "secret": "0df6304e-0346-4340-80a0-fdf5c0326c93",
     "ccxt_config": {"enableRateLimit": true},
     "ccxt_async_config": {
       "enableRateLimit": true,
@@ -158,7 +159,9 @@
       "ZEC/USDT",
       "ZEN/USDT",
       "ZIL/USDT",
-      "ZRX/USDT"
+      "ZRX/USDT",
+      "LRC/USDT",
+      "REN/USDT"
     ]
   },
   "pairlists": [
