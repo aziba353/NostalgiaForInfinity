@@ -41,7 +41,8 @@
       "rateLimit": 200
     },
     "pair_whitelist":[
-    ],
+    ]
+  },
   "dataformat_ohlcv": "jsongz",
   "dataformat_trades": "jsongz",
   "telegram": {
@@ -88,3 +89,4 @@
   "initial_state": "running",
   "forcebuy_enable": true,
 }
+
