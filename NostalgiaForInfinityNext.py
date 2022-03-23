@@ -5672,7 +5672,10 @@ class NostalgiaForInfinityNext(IStrategy):
                 f = theta0
             self.trades_info["total"]["f"] = f
 
-            stoploss = (self.custom_signal[pair]["stop"] / self.custom_signal[pair]["entry"] - 1) - 0.0015
+            dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
+            candle = dataframe.iloc[-1].squeeze()
+            stoploss = stoploss_from_absolute(candle["close"] - (candle['ahmad_atr_1h'] * 3), candle["close"]) + 0.0016
+
             allowed_capital_at_risk = self.wallets.get_total_stake_amount() * f / 100
             cal_stake = abs(allowed_capital_at_risk / stoploss)
 
@@ -5680,8 +5683,6 @@ class NostalgiaForInfinityNext(IStrategy):
                 cal_stake = min_stake
             if cal_stake >= self.wallets.get_total_stake_amount() / 5:
                 cal_stake = self.wallets.get_total_stake_amount() / 5
-            if self.custom_signal[pair]["stake"] != 0:
-                cal_stake = self.custom_signal[pair]["stake"]
 
         except Exception as e:
             logger.warning("There is an Error in Custom Stake amount function.")
@@ -5694,6 +5695,7 @@ class NostalgiaForInfinityNext(IStrategy):
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
         candle = dataframe.iloc[-1].squeeze()
         s = stoploss_from_absolute(current_rate - (candle['ahmad_atr_1h'] * 3), current_rate)
+        logger.info(f"New stoploss is {s}")
         if s < 0.05:
             s = 0.05
         return s
