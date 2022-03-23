@@ -5695,7 +5695,7 @@ class NostalgiaForInfinityNext(IStrategy):
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
         candle = dataframe.iloc[-1].squeeze()
         s = stoploss_from_absolute(current_rate - (candle['ahmad_atr_1h'] * 3), current_rate)
-        logger.info(f"New stoploss is {s}")
+        logger.info(f"New stoploss is {s} and ATR is {candle['ahmad_atr_1h']}")
         if s < 0.05:
             s = 0.05
         return s
