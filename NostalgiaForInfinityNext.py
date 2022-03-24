@@ -4402,7 +4402,7 @@ class NostalgiaForInfinityNext(IStrategy):
         informative_1h['sell_pump_24_2'] = (informative_1h['hl_pct_change_24'] > self.sell_pump_threshold_24_2)
         informative_1h['sell_pump_24_3'] = (informative_1h['hl_pct_change_24'] > self.sell_pump_threshold_24_3)
 
-        informative_1h['ahmad_atr'] = ta.ATR(dataframe, timeperiod=10)
+        informative_1h['ahmad_atr'] = ta.ATR(informative_1h, timeperiod=10)
 
         tok = time.perf_counter()
         log.debug(f"[{metadata['pair']}] informative_1h_indicators took: {tok - tik:0.4f} seconds.")
