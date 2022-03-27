@@ -5529,7 +5529,8 @@ class NostalgiaForInfinityNext(IStrategy):
             self.trades_info["total"]["is_draw"] = False
 
         if self.config['runmode'].value in ('live', 'dry_run'):
-            trades = Trade.get_trades([Trade.is_open.is_(False)]).order_by(Trade.close_date).limit(duration).all()
+            trades = Trade.get_trades([Trade.is_open.is_(False)]).order_by(Trade.close_date.desc()).limit(duration).all()
+            trades.reverse()
             self.trades_info["total"]["win"] = 0
             self.trades_info["total"]["loss"] = 0
             self.trades_info["total"]["ccw"] = 0
@@ -5675,7 +5676,8 @@ class NostalgiaForInfinityNext(IStrategy):
             dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
             candle = dataframe.iloc[-1].squeeze()
             stoploss = stoploss_from_absolute(candle["close"] - (candle['ahmad_atr_1h'] * 3), candle["close"]) + 0.0016
-
+            if stoploss < 0.05:
+                    stoploss = 0.05
             allowed_capital_at_risk = self.wallets.get_total_stake_amount() * f / 100
             cal_stake = abs(allowed_capital_at_risk / stoploss)
 
