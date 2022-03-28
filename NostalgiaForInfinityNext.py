@@ -5677,7 +5677,7 @@ class NostalgiaForInfinityNext(IStrategy):
             candle = dataframe.iloc[-1].squeeze()
             stoploss = stoploss_from_absolute(candle["close"] - (candle['ahmad_atr_1h'] * 3), candle["close"]) + 0.0016
             if stoploss < 0.05:
-                    stoploss = 0.05
+                stoploss = 0.05
             allowed_capital_at_risk = self.wallets.get_total_stake_amount() * f / 100
             cal_stake = abs(allowed_capital_at_risk / stoploss)
 
