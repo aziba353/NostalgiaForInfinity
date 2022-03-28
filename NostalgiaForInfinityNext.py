@@ -5635,6 +5635,7 @@ class NostalgiaForInfinityNext(IStrategy):
             self.trades_info_update(f0=f0, duration=duration, pf0=pf0, wr0=wr0, crrr0=crrr0)
             theta = self.theta_calc(m_bs, m_pf, theta0, cpf=self.trades_info["total"]["cpf"])
             logger.info(self.trades_info)
+            logger.info(f"Max Risk is {theta}")
 
             if self.trades_info["total"]["is_draw"]:
                 f = self.trades_info["total"]["f"]
@@ -5697,7 +5698,7 @@ class NostalgiaForInfinityNext(IStrategy):
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
         candle = dataframe.iloc[-1].squeeze()
         s = stoploss_from_absolute(current_rate - (candle['ahmad_atr_1h'] * 3), current_rate)
-        logger.info(f"New stoploss is {s} and ATR is {candle['ahmad_atr_1h']}")
+        logger.info(f"New stoploss {pair} is {s} and ATR is {candle['ahmad_atr_1h']}")
         if s < 0.05:
             s = 0.05
         return s
